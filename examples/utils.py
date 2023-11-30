@@ -7,7 +7,7 @@ import rxredis as rxr
 
 
 def stream_producer(
-    redis_api: Redis, stream: str = "prod", marbles: str = "-1-2-3-4-5-6-|"
+    redis_api: Redis, stream: str = "prod", marbles: str = "1-2-3-4-5-6-|"
 ):
     return rx.from_marbles(marbles, timespan=0.2).pipe(
         ops.map(lambda x: ("*", {"marble": x})),
