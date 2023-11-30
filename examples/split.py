@@ -1,6 +1,9 @@
+"""Split example.
+
+Demonstrates splitting input stream into two output streams based on condition.
+"""
 import logging
 
-import reactivex as rx
 import reactivex.operators as ops
 import redis
 from redis import Redis
@@ -19,38 +22,39 @@ def main():
     redis_api.flushall()
 
     try:
+        # Async write some stream data
         prod = utils.stream_producer(redis_api)
 
+        # Async read stream -> partition -> write each partition to separate stream
         req = rxr.from_stream(
             redis_api,
             stream="prod",
-            stream_id=">",
+            stream_id="0",
             timeout=2000,
             complete_on_timeout=True,
-        ).pipe(ops.publish())
+        ).pipe(
+            ops.publish()
+        )  # hot
 
         even, odd = req.pipe(
-            # ops.map(lambda x: cattr.structure(x, StreamData)),
             ops.partition(lambda x: int(x[1]["marble"]) % 2 == 0),
         )
 
         evensub = even.pipe(
-            # ops.map(lambda x: cattr.unstructure(x[1])),
             rxr.operators.to_stream(redis_api, "even"),
-        ).subscribe()
+        ).subscribe()  # Assigned new stream-ids
 
         oddsub = odd.pipe(
-            # ops.map(lambda x: cattr.unstructure(x[1])),
             rxr.operators.to_stream(redis_api, "odd", relay_streamid=True),
-        ).subscribe()
+        ).subscribe()  # Copies stream-id to new stream
 
         req.subscribe(
             on_next=lambda x: _logger.info(f"Consumed {x}"),
             on_error=lambda _: _logger.exception("consumer"),
         )
         prod.subscribe(
-            on_next=lambda x: _logger.info(f"produced {x}"),
-            on_completed=lambda: _logger.info("producer completed"),
+            on_next=lambda x: _logger.info(f"Produced {x}"),
+            on_completed=lambda: _logger.info("Producer completed"),
             on_error=lambda _: _logger.exception("producer"),
         )
         req.connect()

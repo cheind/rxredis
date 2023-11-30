@@ -1,10 +1,11 @@
-import logging
-import random
-from threading import Event
+"""Average example.
 
-import attr
-import cattr
-import reactivex as rx
+Demonstrates computing a rolling average over distinct stream input values
+and emitting those averages to an output stream.
+"""
+
+import logging
+
 import reactivex.operators as ops
 import redis
 from redis import Redis
@@ -28,30 +29,27 @@ def main():
             redis_api, stream="prod", marbles="1-2-2-3-4-5-6-|"
         ).subscribe()
 
-        # Async consumptions from xstream: prod
-        subs = (
-            rxr.from_stream(
-                redis_api,
-                stream="prod",
-                stream_id="0",  # Start id, or '$' or '>'
-                timeout=2000,
-                complete_on_timeout=True,  # Emit completed event when no more data
-            )
-            .pipe(
-                ops.map(lambda x: int(x[1]["marble"])),  # Extract marble data
-                ops.distinct_until_changed(),  # Wait until different from last
-                ops.buffer_with_count(3, 1),  # Make batches with step 1
-                ops.map(lambda x: sum(x) / len(x)),  # Compute average of batch
-                ops.map(lambda x: ("*", {"avg": x})),  # Map to output stream format
-                rxr.operators.to_stream(
-                    redis_api, "average", relay_streamid=True
-                ),  # Output
-            )
-            .subscribe(
-                on_next=lambda x: _logger.info(f"Mean: {x}"),
-                on_error=lambda _: _logger.exception("consumer"),
-            )
+        # Async read stream -> aggregate distinct -> compute mean -> write stream
+        rxr.from_stream(
+            redis_api,
+            stream="prod",
+            stream_id="0",  # Start id, or '$' or '>'
+            timeout=2000,
+            complete_on_timeout=True,  # Emit completed event when no more data
+        ).pipe(
+            ops.map(lambda x: int(x[1]["marble"])),  # Extract marble data
+            ops.distinct_until_changed(),  # Wait until different from last
+            ops.buffer_with_count(3, 1),  # Make batches with step 1
+            ops.map(lambda x: sum(x) / len(x)),  # Compute average of batch
+            ops.map(lambda x: ("*", {"avg": x})),  # Map to output stream format
+            rxr.operators.to_stream(
+                redis_api, "average", relay_streamid=True
+            ),  # Output
+        ).subscribe(
+            on_next=lambda x: _logger.info(f"Mean: {x}"),
+            on_error=lambda _: _logger.exception("consumer"),
         )
+
     except KeyboardInterrupt:
         pass
 

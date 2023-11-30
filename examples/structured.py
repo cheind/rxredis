@@ -1,3 +1,13 @@
+"""Structured example.
+
+Demonstrates the use of attr/cattr library to parse/serialize Redis data into
+structured datatypes.
+
+This demo requires both libraries to be installed
+    pip install attrs cattrs
+
+"""
+
 import logging
 import random
 from threading import Event
@@ -42,29 +52,28 @@ def main():
     redis_api.flushall()
 
     try:
-        prod = utils.stream_producer(redis_api, stream="structured").subscribe()
+        # Async produce
+        utils.stream_producer(redis_api, stream="structured").subscribe()
 
-        req = (
-            rxr.from_stream(
-                redis_api,
-                stream="structured",
-                stream_id=">",
-                timeout=2000,
-                complete_on_timeout=True,
-            )
-            .pipe(
-                ops.map(lambda x: cattr.structure(x, InData)),
-                ops.map(transform_data),
-                ops.map(lambda x: (x[0], cattr.unstructure(x[1]))),
-                rxr.operators.to_stream(redis_api, "transformed", relay_streamid=True),
-            )
-            .subscribe(
-                on_next=lambda x: _logger.info(f"Transformed into {x}"),
-                on_error=lambda _: _logger.exception("consumer"),
-            )
+        # Async read stream -> structure -> transform -> unstructure -> write stream
+        rxr.from_stream(
+            redis_api,
+            stream="structured",
+            stream_id=">",
+            timeout=2000,
+            complete_on_timeout=True,
+        ).pipe(
+            ops.map(lambda x: cattr.structure(x, InData)),
+            ops.map(transform_data),
+            ops.map(lambda x: (x[0], cattr.unstructure(x[1]))),
+            rxr.operators.to_stream(redis_api, "transformed", relay_streamid=True),
+        ).subscribe(
+            on_next=lambda x: _logger.info(f"Transformed into {x}"),
+            on_error=lambda _: _logger.exception("consumer"),
         )
+
     except KeyboardInterrupt:
-        req.dispose()
+        pass
 
 
 if __name__ == "__main__":
