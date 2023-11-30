@@ -19,6 +19,25 @@ def from_stream(
     complete_on_timeout: bool = False,
     scheduler: Optional[abc.SchedulerBase] = None,
 ) -> Observable[StreamDataWithId]:
+    """Turns a Redis stream into an observable sequence.
+
+    Params:
+        redis_api: Redis client
+        stream: Redis stream name
+        stream_id: Stream id to be considered last read. Special tokens are '$' and '>',
+            with '>' setting stream id to last available at point of subscription.
+        batch: batch size per call. When greater 1, batch elements are emitted as fast
+            as possible.
+        timeout: Timeout in ms
+        complete_on_timeout: When true, this observable completes once no elements within
+            timeout period can be read.
+        scheduler: Scheduler instance to schedule the values on
+
+    Returns:
+        The observable sequence whose elements are pulled from the given Redis stream.
+        Each element is a tuple of stream-id and value dict: StreamDataWithId.
+    """
+
     def subscribe(
         observer: abc.ObserverBase[StreamDataWithId],
         scheduler_: Optional[abc.SchedulerBase] = None,
