@@ -23,25 +23,29 @@ def main():
     redis_api.flushall()
 
     try:
+        # Async production to xstream: prod
         prod = utils.stream_producer(
             redis_api, stream="prod", marbles="1-2-2-3-4-5-6-|"
         ).subscribe()
 
+        # Async consumptions from xstream: prod
         subs = (
             rxr.from_stream(
                 redis_api,
                 stream="prod",
-                stream_id="0",
+                stream_id="0",  # Start id, or '$' or '>'
                 timeout=2000,
-                complete_on_timeout=True,
+                complete_on_timeout=True,  # Emit completed event when no more data
             )
             .pipe(
-                ops.map(lambda x: int(x[1]["marble"])),
-                ops.distinct_until_changed(),
-                ops.buffer_with_count(3, 1),
-                ops.map(lambda x: sum(x) / len(x)),
-                ops.map(lambda x: ("*", {"avg": x})),
-                rxr.operators.to_stream(redis_api, "average", relay_streamid=True),
+                ops.map(lambda x: int(x[1]["marble"])),  # Extract marble data
+                ops.distinct_until_changed(),  # Wait until different from last
+                ops.buffer_with_count(3, 1),  # Make batches with step 1
+                ops.map(lambda x: sum(x) / len(x)),  # Compute average of batch
+                ops.map(lambda x: ("*", {"avg": x})),  # Map to output stream format
+                rxr.operators.to_stream(
+                    redis_api, "average", relay_streamid=True
+                ),  # Output
             )
             .subscribe(
                 on_next=lambda x: _logger.info(f"Mean: {x}"),
@@ -49,7 +53,7 @@ def main():
             )
         )
     except KeyboardInterrupt:
-        subs.dispose()
+        pass
 
 
 if __name__ == "__main__":
