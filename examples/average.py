@@ -27,7 +27,7 @@ def main():
             redis_api, stream="prod", marbles="1-2-2-3-4-5-6-|"
         ).subscribe()
 
-        req = (
+        subs = (
             rxr.from_stream(
                 redis_api,
                 stream="prod",
@@ -49,7 +49,7 @@ def main():
             )
         )
     except KeyboardInterrupt:
-        req.dispose()
+        subs.dispose()
 
 
 if __name__ == "__main__":
