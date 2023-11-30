@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  redis:
+    image: redis:7.2.3
+    restart: always
+    ports:
+      - '6379:6379'    
+    command: >
+      redis-server --save "" --appendonly no --loglevel warning
+  redis-cli:
+    image: redis:7.2.3
+    profiles:
+      - debug
+    links:
+      - redis
+    command: >
+      redis-cli -h redis
