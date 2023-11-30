@@ -1,2 +1,2 @@
 # rxredis
-ReactiveX observables/operations for Redis / Python
+Python ReactiveX observables/operators to work with Redis.
