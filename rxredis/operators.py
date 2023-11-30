@@ -1,42 +1,34 @@
-from typing import Optional, TypeVar, Callable, Union
+from typing import Optional, Callable, Union
 
 from reactivex import Observable
 from reactivex import abc
 
 from redis import Redis
 
-_T = TypeVar("_T")
-MapStr = Callable[[_T], str]
+from .observables import StreamDataWithId
+
+MapStr = Callable[[StreamDataWithId], str]
 StrOrMapStr = Union[str, MapStr]
-MapDict = Callable[[_T], dict]
 
 
 def to_stream(
     redis_api: Redis,
     stream: StrOrMapStr,
-    stream_id: StrOrMapStr = "*",
-    unstructure: MapDict = None,
+    relay_streamid: bool = False,
     max_len: int = 500,
-) -> Callable[[Observable[_T]], Observable[_T]]:
+) -> Callable[[Observable[StreamDataWithId]], Observable[StreamDataWithId]]:
 
-    if unstructure is None:
-
-        def noop(x: _T):
-            return x
-
-        unstructure = noop
-
-    def to_xstream_impl(source: Observable[_T]) -> Observable[_T]:
+    def to_xstream_impl(source: Observable[StreamDataWithId]) -> Observable[StreamDataWithId]:
         def subscribe(
-            observer: abc.ObserverBase[_T],
+            observer: abc.ObserverBase[StreamDataWithId],
             scheduler: Optional[abc.SchedulerBase] = None,
         ) -> abc.DisposableBase:
-            def on_next(x: _T) -> None:
+            def on_next(x: StreamDataWithId) -> None:
                 xstream = stream if isinstance(stream, str) else stream(x)
-                xid = stream_id if isinstance(stream_id, str) else stream_id(x)
+                xid = x[0] if relay_streamid else '*'
                 try:
                     redis_api.xadd(
-                        name=xstream, fields=unstructure(x), id=xid, maxlen=max_len
+                        name=xstream, fields=x[1], id=xid, maxlen=max_len
                     )
                 except Exception as e:
                     observer.on_error(e)

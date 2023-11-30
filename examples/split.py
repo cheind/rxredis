@@ -1,70 +1,59 @@
-from threading import Event
+import logging
 
 import reactivex as rx
-import redis
 import reactivex.operators as ops
+import redis
 from redis import Redis
 
 import rxredis as rxr
-import attr
-import cattr
 
+from . import utils
 
-def produce(redis_api: Redis):
-    return (
-        rx.interval(0.5)
-        .pipe(
-            ops.map(lambda i: {"i": i}),
-            rxr.operations.to_stream(redis_api, "prod"),
-        )
-        .subscribe(
-            on_next=lambda x: print(f"produced {x}"),
-            on_completed=lambda: print("completed"),
-            on_error=lambda e: print(e),
-        )
-    )
+_logger = logging.getLogger("rxredis")
 
 
 def main():
-
+    logging.basicConfig(level=logging.INFO)
 
     redis_api: Redis = redis.from_url("redis://localhost:6379/0?decode_responses=True")
-    done = Event()
-
-    @attr.define
-    class ProducerData:
-        i: int
-
-    StreamData = tuple[str, ProducerData]
+    redis_api.flushall()
 
     try:
-        prod = produce(redis_api)
+        prod = utils.stream_producer(redis_api)
 
-        req = rxr.from_stream(redis_api, stream="prod", stream_id=">").pipe(
-            ops.take(10), ops.publish()
-        )
+        req = rxr.from_stream(
+            redis_api,
+            stream="prod",
+            stream_id=">",
+            timeout=2000,
+            complete_on_timeout=True,
+        ).pipe(ops.publish())
 
         even, odd = req.pipe(
-            ops.map(lambda x: cattr.structure(x, StreamData)),
-            ops.partition(lambda x: x[1].i % 2 == 0),
+            # ops.map(lambda x: cattr.structure(x, StreamData)),
+            ops.partition(lambda x: int(x[1]["marble"]) % 2 == 0),
         )
 
         evensub = even.pipe(
-            ops.map(lambda x: cattr.unstructure(x[1])),
-            rxr.operations.to_stream(redis_api, "even"),
+            # ops.map(lambda x: cattr.unstructure(x[1])),
+            rxr.operators.to_stream(redis_api, "even"),
         ).subscribe()
 
         oddsub = odd.pipe(
-            ops.map(lambda x: cattr.unstructure(x[1])),
-            rxr.operations.to_stream(redis_api, "odd"),
+            # ops.map(lambda x: cattr.unstructure(x[1])),
+            rxr.operators.to_stream(redis_api, "odd", relay_streamid=True),
         ).subscribe()
 
         req.subscribe(
-            on_next=lambda x: print(f"Consumed {x}"),
-            on_completed=lambda: done.set(),
+            on_next=lambda x: _logger.info(f"Consumed {x}"),
+            on_error=lambda _: _logger.exception("consumer"),
+        )
+        prod.subscribe(
+            on_next=lambda x: _logger.info(f"produced {x}"),
+            on_completed=lambda: _logger.info("producer completed"),
+            on_error=lambda _: _logger.exception("producer"),
         )
         req.connect()
-        done.wait()
     except KeyboardInterrupt:
         evensub.dispose()
         oddsub.dispose()

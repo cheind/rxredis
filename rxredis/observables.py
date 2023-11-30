@@ -6,6 +6,7 @@ from reactivex.disposable import CompositeDisposable, Disposable
 from reactivex.scheduler import CurrentThreadScheduler
 from redis import Redis
 
+StreamData = dict
 StreamDataWithId = Tuple[str, dict]
 
 
@@ -68,4 +69,5 @@ def from_stream(
 
     return Observable(subscribe)
 
-__all__ = ['from_stream']
+
+__all__ = ["from_stream"]
