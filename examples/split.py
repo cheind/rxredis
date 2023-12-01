@@ -31,23 +31,26 @@ def main():
             on_error=lambda _: _logger.exception("producer"),
         )
 
-        # Read stream -> partition -> write each partition to separate stream
-
+        # Consumer
         streams = ["even", "odd"]
 
+        # Read marble stream until no more elements are added
         rxr.from_stream(
             redis_api,
             stream="prod",
-            stream_id="0",
+            stream_id="0",  # Start at beginning of stream
             timeout=2000,
-            complete_on_timeout=True,
+            complete_on_timeout=True,  # Complete observable upon timeout
         ).pipe(
+            # Group by parity
             ops.group_by(lambda x: int(x[1]["marble"]) % 2),
+            # Map each group
             ops.flat_map(
                 lambda grp: grp.pipe(
+                    # Push to destination stream
                     rxr.operators.to_stream(redis_api, streams[grp.key]),
-                    ops.last()
-                    # ops.to_list(),
+                    # Return last element on completion of group
+                    ops.last(),
                 )
             ),
         ).subscribe(
