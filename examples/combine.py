@@ -4,7 +4,6 @@ Demonstrates merging multiple input streams and writing a combined
 result in a lower frequency.
 """
 
-import logging
 import math
 import multiprocessing as mp
 import time
@@ -80,8 +79,6 @@ def combine(streams: list[str], stop: mp.Event, hz: float):
 
 
 def main():
-    logging.basicConfig(level=logging.INFO)
-
     redis_api: Redis = redis.from_url("redis://localhost:6379/0?decode_responses=True")
     redis_api.flushall()
     stop = mp.Event()
