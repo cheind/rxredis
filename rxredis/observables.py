@@ -59,7 +59,7 @@ def from_stream(
                 # Stream not available
                 sid = "0"
 
-        def from_xstream_impl(_: abc.SchedulerBase, __: Any = None) -> None:
+        def from_stream_impl(_: abc.SchedulerBase, __: Any = None) -> None:
             nonlocal disposed, sid
 
             try:
@@ -89,7 +89,7 @@ def from_stream(
             disposed = True
 
         disp = Disposable(dispose)
-        return CompositeDisposable(_scheduler.schedule(from_xstream_impl), disp)
+        return CompositeDisposable(_scheduler.schedule(from_stream_impl), disp)
 
     return Observable(subscribe)
 
