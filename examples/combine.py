@@ -61,7 +61,7 @@ def combine(streams: list[str], stop: mp.Event, hz: float):
             rx.combine_latest(*obs)  # combine streams whenever one stream fires
             .pipe(
                 ops.take_while(lambda _: not stop.is_set()),  # check stop condition
-                ops.buffer_with_time(1.0 / hz),  # buffer elems into time windows
+                ops.buffer_with_time(1.0 / hz),  # buffer into time windows (no overlap)
                 ops.filter(lambda b: len(b) > 0),  # skip empty buffers
                 ops.map(lambda b: b[-1]),  # use latest from buffer
                 ops.map(combine_from_tuple),  # transform to redis stream
