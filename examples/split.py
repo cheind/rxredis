@@ -54,7 +54,7 @@ def main():
                 )
             ),
         ).subscribe(
-            on_next=lambda x: _logger.info(f"Consumed {x}"),
+            on_next=lambda x: _logger.info(f"Last consumed {x}"),
             on_error=lambda _: _logger.exception("consumer"),
             on_completed=lambda: _logger.info("Done"),
         )
