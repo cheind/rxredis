@@ -1,5 +1,4 @@
-# rxredis
-*ReactiveX extensions for Redis in Python*
+**rxredis**: *ReactiveX extensions for Redis in Python*
 
 ## Example
 
