@@ -34,7 +34,7 @@ def main():
             redis_api,
             stream="prod",
             stream_id="0",  # Start id, or '$' or '>'
-            timeout=2000,
+            timeout=2.0,
             complete_on_timeout=True,  # Emit completed event when no more data
         ).pipe(
             ops.map(lambda x: int(x[1]["marble"])),  # Extract marble data

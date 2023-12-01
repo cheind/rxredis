@@ -6,7 +6,7 @@ services:
     ports:
       - '6379:6379'    
     command: >
-      redis-server --save "" --appendonly no --loglevel warning
+      redis-server --save "" --appendonly no --loglevel warning --notify-keyspace-events KEA
   redis-cli:
     image: redis:7.2.3
     profiles:

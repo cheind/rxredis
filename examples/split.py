@@ -39,7 +39,7 @@ def main():
             redis_api,
             stream="prod",
             stream_id="0",  # Start at beginning of stream
-            timeout=2000,
+            timeout=2.0,
             complete_on_timeout=True,  # Complete observable upon timeout
         ).pipe(
             # Group by parity

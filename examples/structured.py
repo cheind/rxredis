@@ -60,7 +60,7 @@ def main():
             redis_api,
             stream="structured",
             stream_id=">",
-            timeout=2000,
+            timeout=2.0,
             complete_on_timeout=True,
         ).pipe(
             ops.map(lambda x: cattr.structure(x, InData)),
