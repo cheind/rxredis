@@ -46,7 +46,8 @@ def main():
             ops.flat_map(
                 lambda grp: grp.pipe(
                     rxr.operators.to_stream(redis_api, streams[grp.key]),
-                    ops.to_list(),
+                    ops.last()
+                    # ops.to_list(),
                 )
             ),
         ).subscribe(
