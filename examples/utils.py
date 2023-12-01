@@ -6,7 +6,7 @@ import reactivex.operators as ops
 import rxredis as rxr
 
 
-def stream_producer(
+def marble_stream_producer(
     redis_api: Redis, stream: str = "prod", marbles: str = "1-2-3-4-5-6-|"
 ):
     return rx.from_marbles(marbles, timespan=0.2).pipe(
