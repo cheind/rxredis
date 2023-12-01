@@ -26,7 +26,8 @@ def to_stream(
         redis_api: Redis client
         stream: Redis stream name. For dynamic dispatching this can be function, returning
             the stream name from the element itself.
-        relay_streamid: When true, the Redis stream id is taken from the input
+        relay_streamid: When true, the Redis stream id is copied from the input. When false,
+            '*' is used to auto-generate an id upon insertion.
         max_len: Max stream length in Redis
 
     Returns:
