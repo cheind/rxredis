@@ -1,6 +1,5 @@
 # rxredis
-Python ReactiveX observables/operators to work with Redis.
-
+*ReactiveX extensions for Redis in Python*
 
 ## Example
 
