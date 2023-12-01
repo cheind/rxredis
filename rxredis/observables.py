@@ -17,6 +17,7 @@ def from_stream(
     batch: int = 1,
     timeout: int = 500,
     complete_on_timeout: bool = False,
+    latest: bool = False,
     scheduler: Optional[abc.SchedulerBase] = None,
 ) -> Observable[StreamDataWithId]:
     """Turns a Redis stream into an observable sequence.
@@ -31,6 +32,8 @@ def from_stream(
         timeout: Timeout in ms
         complete_on_timeout: When true, this observable completes once no elements within
             timeout period can be read.
+        latest: When true and batch-size greater than one will emit only the latest
+            item of batch and ignore the rest.
         scheduler: Scheduler instance to schedule the values on
 
     Returns:
@@ -69,6 +72,8 @@ def from_stream(
                     else:
                         # Handle data
                         resp = resp[0][1]  # one stream only
+                        if latest:
+                            resp = resp[-1:]  # latest item only
                         for rid, value in resp:
                             observer.on_next((rid, value))
 
