@@ -25,7 +25,7 @@ def main():
 
     try:
         # Async production to xstream: prod
-        prod = utils.stream_producer(
+        prod = utils.marble_stream_producer(
             redis_api, stream="prod", marbles="1-2-2-3-4-5-6-|"
         ).subscribe()
 

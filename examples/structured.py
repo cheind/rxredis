@@ -53,7 +53,7 @@ def main():
 
     try:
         # Async produce
-        utils.stream_producer(redis_api, stream="structured").subscribe()
+        utils.marble_stream_producer(redis_api, stream="structured").subscribe()
 
         # Async read stream -> structure -> transform -> unstructure -> write stream
         rxr.from_stream(
