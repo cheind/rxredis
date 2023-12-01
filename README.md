@@ -36,8 +36,9 @@ rxr.from_stream(
         )
     ),
 ).subscribe(
-    on_next=lambda x: _logger.info(f"Consumed {x}"),
-    on_error=lambda _: _logger.exception("consumer"),
+    on_next=lambda x: print(f"Last consumed {x}"),
+    on_error=lambda e: print(e),
+    on_completed=lambda: print('Done')
 )
 ```
 
