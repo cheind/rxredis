@@ -4,14 +4,12 @@ import redis
 from reactivex import Observable, abc
 from reactivex.disposable import CompositeDisposable, Disposable
 from reactivex.scheduler import CurrentThreadScheduler
+from reactivex import operators as ops
 from redis import Redis
-from redis.client import PubSub
-
-from . import utils
-
 
 StreamData = dict
 StreamDataWithId = Tuple[str, dict]
+PubSubDataWithId = Tuple[str, dict]
 
 
 def from_stream(
@@ -100,37 +98,34 @@ def from_stream(
     return Observable(subscribe)
 
 
-def from_pubsub(
+def on_publish(
     redis_api: Redis,
     pattern: Union[str, list[str]],
     timeout: float = 0.5,
     complete_on_timeout: bool = False,
     scheduler: Optional[abc.SchedulerBase] = None,
-) -> Observable[StreamDataWithId]:
-    """Turns a Redis stream into an observable sequence.
+) -> Observable[PubSubDataWithId]:
+    """An observable that fires when Redis PubSub events are received.
 
     Params:
         redis_api: Redis client
-        pattern: Pubsub pattern to subscribe to
-        batch: batch size per call. When greater 1, batch elements are emitted as fast
-            as possible.
+        pattern: Pubsub pattern to subscribe to. See `psubscribe`.
         timeout: Timeout in seconds
         complete_on_timeout: When true, this observable completes once no elements within
             timeout period can be read.
-        latest: When true and batch-size greater than one will emit only the latest
-            item of batch and ignore the rest.
         scheduler: Scheduler instance to schedule the values on
 
     Returns:
-        The observable sequence whose elements are pulled from the given Redis stream.
-        Each element is a tuple of stream-id and value dict: StreamDataWithId.
+        The observable sequence of Redis PubSub events. Each notification is
+        composed of (Id, Dict) where Dict contains 'channel' and 'message'
+        information.
     """
 
     if isinstance(pattern, str):
         pattern = [pattern]
 
     def subscribe(
-        observer: abc.ObserverBase[StreamDataWithId],
+        observer: abc.ObserverBase[PubSubDataWithId],
         scheduler_: Optional[abc.SchedulerBase] = None,
     ) -> abc.DisposableBase:
         _scheduler = scheduler or scheduler_ or CurrentThreadScheduler.singleton()
@@ -149,7 +144,7 @@ def from_pubsub(
                         if complete_on_timeout:
                             observer.on_completed()
                     else:
-                        # Handle data
+                        # Handle data, add redis-timestamp
                         t = redis_api.time()
                         tc = str(int(round(t[0] * 1e3 + t[1] * 1e-3)))
 
@@ -173,4 +168,42 @@ def from_pubsub(
     return Observable(subscribe)
 
 
-__all__ = ["from_stream", "from_pubsub"]
+def on_keyspace(redis_api: Redis, keys: Union[str, list[str]]):
+    """Returns an observable that emits on Redis keyspace events.
+
+    Redis keyspace events are triggered upon creation/deletion/modification
+    of Redis keys. As they require additional CPU ressources, they are
+    not enabled by default. See
+
+    https://redis.io/docs/manual/keyspace-notifications/
+
+    for more information.
+
+    Params:
+        redis_api: Redis client
+        keys: Single or multiple keys of interest
+
+    Returns:
+        The observable sequence whose elements are composed of (Id, Dict) where
+        Dict contains keys 'key' and 'event' information.
+    """
+
+    def extract_key(keyspace_event: str):
+        return keyspace_event.split(":")[-1]
+
+    patterns = [f"__keyspace@*__:{k}" for k in keys]
+
+    return on_publish(redis_api, patterns).pipe(
+        ops.map(
+            lambda t: (
+                t[0],
+                {
+                    "key": extract_key(t[1]["channel"]),
+                    "event": extract_key(t[1]["message"]),
+                },
+            )
+        )
+    )
+
+
+__all__ = ["from_stream", "on_publish", "on_keyspace"]
